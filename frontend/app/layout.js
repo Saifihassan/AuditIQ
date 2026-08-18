@@ -22,7 +22,20 @@ export default function RootLayout({ children }) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <nav className="flex justify-between bg-surface w-[100%] text-text-secondary p-5 bg-[#1A1C1E] items-center">
+          <p className="text-primary-emerald text-xl">AuditIQ</p>
+          <ul className="list-none flex gap-10 justify-evenly">
+            <li href="#" className="hover:text-primary-bright cursor-pointer" >DASHBOARD</li>
+            <li href="#" className="hover:text-primary-bright cursor-pointer">REPORTS</li>
+            <li href="#" className="hover:text-primary-bright cursor-pointer">SETTINGS</li>
+          </ul>
+          <button className="p-3 hover:bg-primary-bright text-[#1A1C1E] bg-primary-emerald rounded-2xl transition-colors duration-200">+ New Audit</button>
+        </nav>
+        
+        {children}
+
+      </body>
     </html>
   );
 }

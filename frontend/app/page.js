@@ -3,16 +3,7 @@ import Image from "next/image";
 export default function Home() {
   return (
     <div className="">
-      <nav className="flex justify-between bg-surface w-[100%] text-text-secondary p-5 bg-[#1A1C1E] items-center">
-        <p className="text-primary-emerald text-xl">AI SEO INTELLIGENCE</p>
-        <ul className="list-none flex gap-10 justify-evenly">
-          <li href="#" className="hover:text-primary-bright cursor-pointer" >DASHBOARD</li>
-          <li href="#" className="hover:text-primary-bright cursor-pointer">REPORTS</li>
-          <li href="#" className="hover:text-primary-bright cursor-pointer">SETTINGS</li>
-        </ul>
-        <button className="p-3 hover:bg-primary-bright text-[#1A1C1E] bg-primary-emerald rounded-2xl transition-colors duration-200">+ New Audit</button>
-      </nav>
-
+ 
       <section className=" flex justify-center mt-15">
         <div className="flex flex-col gap-8 w-[50%] items-center">
             <h1 className="text-5xl text-center">Automated SEO & GEO Audits</h1>
@@ -62,14 +53,14 @@ export default function Home() {
 
       <footer className="border-t-2 flex gap-10 items-center h-32 justify-evenly border-outline mt-15">
         
-        <h3 className="text-lg">AI SEO INTELLIGENCE</h3>
+        <h3 className="text-lg">AuditIQ</h3>
         <ul className="flex gap-6">
           <li className="cursor-pointer hover:text-primary-bright">Privacy Policy</li>
           <li className="cursor-pointer hover:text-primary-bright">Terms of Service</li>
           <li className="cursor-pointer hover:text-primary-bright">Contact</li>
         </ul>
 
-        <p>© 2026 AI SEO INTELLIGENCE. All Rights Reserved</p>
+        <p>© 2026 AuditIQ. All Rights Reserved</p>
 
       </footer>
 
