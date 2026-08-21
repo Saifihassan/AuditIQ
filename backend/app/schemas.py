@@ -1,20 +1,24 @@
-from pydantic import BaseModel, HttpUrl
+from datetime import datetime
+from pydantic import BaseModel, EmailStr
 
-
-# ── Audit schemas ─────────────────────────────────────────────────────────────
-
-class Audit(BaseModel):
-    url: HttpUrl
-
-
-# ── Auth schemas ──────────────────────────────────────────────────────────────
-
-class Signup(BaseModel):
+class UserSignup(BaseModel):
     name: str
-    email: str
+    email: EmailStr
     password: str
 
-
-class Login(BaseModel):
-    email: str
+class UserLogin(BaseModel):
+    email: EmailStr
     password: str
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
