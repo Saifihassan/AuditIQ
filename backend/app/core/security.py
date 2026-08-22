@@ -2,10 +2,15 @@ from datetime import timedelta,datetime,timezone
 import jwt
 from pwdlib import PasswordHash
 import os
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-SECRET_KEY = os.getenv("SECRET_KEY")
-algorithm = os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
+SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey_fallback")
+algorithm = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 password_hash = PasswordHash.recommended()
 def hashpassword(password:str)->str:

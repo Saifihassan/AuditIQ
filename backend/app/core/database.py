@@ -1,11 +1,12 @@
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.ext.asyncio import async_create_engine,AsyncSession 
-from sqlalchemy.orm import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession ,async_sessionmaker,create_async_engine
 from collections.abc import AsyncGenerator
+    
+
 DATABASE_URL = "sqlite+aiosqlite:///./ auditIQ.db"
 
 
-engine = async_create_engine(
+engine = create_async_engine(
     DATABASE_URL, 
     echo=True
 )
