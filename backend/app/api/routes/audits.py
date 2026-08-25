@@ -1,3 +1,5 @@
+from sqlalchemy import select
+from app.agents.ai_agents import start_audit
 from fastapi import HTTPException
 from fastapi import status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +24,7 @@ async def create_audit(
     db.add(new_audit)
     await db.commit()
     await db.refresh(new_audit)
+    await start_audit(audit_id=new_audit.id, url=str(req.url), db=db)
     
     return new_audit
 
@@ -33,7 +36,7 @@ async def get_audit(
     current_user: User = Depends(get_current_user)
 ):
     # Ensures a user can only query their own audit job
-    stmt = await select(Audit).where(Audit.id == audit_id, Audit.user_id == current_user.id)
+    stmt = select(Audit).where(Audit.id == audit_id, Audit.user_id == current_user.id)
     res = await db.execute(stmt)
     audit = res.scalar_one_or_none()
 

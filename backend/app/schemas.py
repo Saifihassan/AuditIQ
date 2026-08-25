@@ -34,6 +34,10 @@ class Token(BaseModel):
 class AuditStatus(str, Enum):
     PENDING = "pending"
     PROCESSING = "processing"
+    EXTRACTING = "extracting"
+    ANALYZING = "analyzing"
+    SCORING = "scoring"
+    GENERATING_REPORT = "generating_report"
     COMPLETED = "completed"
     FAILED = "failed"
 
