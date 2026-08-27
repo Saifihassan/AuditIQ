@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+import Navbar from "../components/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,15 +25,7 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-screen flex flex-col">
-        <nav className="sticky top-0 z-50 flex justify-between bg-surface w-[100%] text-text-secondary py-3 px-10 bg-[#1A1C1E] items-center border-b border-outline">
-          <p className="text-primary-emerald text-xl">AuditIQ</p>
-          <ul className="list-none flex gap-10 justify-evenly">
-            <Link href="/" className="hover:text-primary-bright cursor-pointer  " >DASHBOARD</Link>
-            <Link href="/reports" className="hover:text-primary-bright cursor-pointer">REPORTS</Link>
-            <Link href="/settings" className="hover:text-primary-bright cursor-pointer">SETTINGS</Link>
-          </ul>
-          <button className="p-3 hover:bg-primary-bright text-[#1A1C1E] bg-primary-emerald rounded-2xl transition-colors duration-200">+ New Audit</button>
-        </nav>
+        <Navbar />
         
         <main className="flex-1">
           {children}

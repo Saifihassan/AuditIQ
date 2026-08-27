@@ -11,9 +11,13 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
+from fastapi import BackgroundTasks
+from app.agents.ai_agents import run_audit_background
+
 @router.post("/", response_model=AuditResponse, status_code=status.HTTP_201_CREATED)
 async def create_audit(
     req: AuditCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -24,7 +28,9 @@ async def create_audit(
     db.add(new_audit)
     await db.commit()
     await db.refresh(new_audit)
-    await start_audit(audit_id=new_audit.id, url=str(req.url), db=db)
+    
+    # Run the audit in the background so the frontend doesn't wait
+    background_tasks.add_task(run_audit_background, new_audit.id, str(req.url))
     
     return new_audit
 
@@ -35,7 +41,6 @@ async def get_audit(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Ensures a user can only query their own audit job
     stmt = select(Audit).where(Audit.id == audit_id, Audit.user_id == current_user.id)
     res = await db.execute(stmt)
     audit = res.scalar_one_or_none()

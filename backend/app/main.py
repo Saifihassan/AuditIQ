@@ -12,6 +12,15 @@ async def lifespan(app:FastAPI):
     await engine.dispose()
 app = FastAPI(title="AuditIQ")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # For dev purposes
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(
     audits.router,
     prefix="/api/audits",

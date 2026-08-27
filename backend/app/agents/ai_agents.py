@@ -68,7 +68,7 @@ performance_seo_agent = Agent(
 
 strategic_seo_agent = Agent(
     name="strategic_seo_agent",
-    model=nararouter    ,
+    model=nararouter,
     instructions=STRATEGIC_AGENT_INSTRUCTIONS,
     output_type=StrategicAssessment
 )
@@ -169,3 +169,16 @@ async def start_audit(audit_id: int, url: str, db: AsyncSession):
             await db.commit()
         raise e
 
+from app.core.database import AsyncSessionLocal
+import traceback
+
+async def run_audit_background(audit_id: int, url: str):
+    """
+    Wrapper to run start_audit in the background with its own database session.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            await start_audit(audit_id, url, db)
+        except Exception as e:
+            print(f"Background audit failed for audit_id {audit_id}: {e}")
+            traceback.print_exc()

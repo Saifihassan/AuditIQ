@@ -1,5 +1,5 @@
 import Image from "next/image";
-
+import Link from "next/link";
 export default function Home() {
   return (
     <div className="">
@@ -9,15 +9,10 @@ export default function Home() {
         <div className="flex flex-col gap-8 w-[50%] items-center z-10">
           <h1 className="text-5xl text-center">Automated SEO & GEO Audits</h1>
           <p className="text-center text-text-secondary">Drop A URL . Get A client Ready Report In Minutes , Analyze Performance,Discover Technical Gaps, And Uncover Growth Opportunities</p>
-          <form className="flex items-center gap-2 justify-center border border-outline p-2 rounded-2xl bg-surface-card">
-            <div className="flex items-center pl-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-text-muted">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-              </svg>
-              <input className="p-2 bg-transparent outline-none text-text-main w-64" placeholder="https://clients-domain.com"></input>
-            </div>
-            <button className="px-6 py-2 bg-primary-emerald hover:bg-primary-bright transition-colors duration-200 text-[#1A1C1E] rounded-2xl font-semibold">Run Audit</button>
-          </form>
+          <div className="flex items-center gap-4 justify-center mt-4">
+            <Link href="/signup" className="px-8 py-3 bg-primary-emerald hover:bg-primary-bright transition-colors duration-200 text-[#1A1C1E] rounded-2xl font-semibold">Get Started</Link>
+            <Link href="/login" className="px-8 py-3 bg-surface-overlay border border-outline hover:border-primary-emerald transition-colors duration-200 text-text-main rounded-2xl font-semibold">Log In</Link>
+          </div>
         </div>
       </section>
 
