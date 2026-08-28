@@ -1,3 +1,4 @@
+from typing import Optional, List
 from sqlalchemy import select
 from app.agents.ai_agents import start_audit
 from fastapi import HTTPException
@@ -52,3 +53,17 @@ async def get_audit(
         )
 
     return audit
+@router.get("/", response_model=List[AuditResponse], status_code=status.HTTP_200_OK)
+async def get_audits(
+    audit_status: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    stmt = select(Audit).where(Audit.user_id == current_user.id)
+    if audit_status:
+        stmt = stmt.where(Audit.status == audit_status)
+    
+    stmt = stmt.order_by(Audit.created_at.desc())
+    res = await db.execute(stmt)
+    audits = res.scalars().all()
+    return audits

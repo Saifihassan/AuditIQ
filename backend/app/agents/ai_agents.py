@@ -1,6 +1,6 @@
 # pyrefly: ignore [missing-import]
 from sqlalchemy.ext.asyncio import AsyncSession
-from .clients import bluesmind,general_compute,nararouter,gemini
+from .clients import bluesmind,general_compute,nararouter,gemini,groq,literouter
 from .prompts import EXTRACTOR_AGENT_INSTRUCTIONS, TECHNICAL_SEO_AGENT_INSTRUCTIONS, CONTENT_SEO_AGENT_INSTRUCTIONS, PERFORMANCE_AGENT_INSTRUCTIONS, STRATEGIC_AGENT_INSTRUCTIONS, REPORT_GENERATOR_AGENT_INSTRUCTIONS
 from .schemas import CrawlExtractionOutput, TechnicalSEOAnalysis, ContentSEOAnalysis, PerformanceAnalysis, StrategicAssessment, FinalSEOReport
 from agents import Agent, Runner, function_tool
@@ -39,7 +39,7 @@ async def crawl_website(url: str) -> str:
 
 Extractor_agent=Agent(
     name="extractor_agent",
-    model=general_compute,
+    model=literouter,
     instructions=EXTRACTOR_AGENT_INSTRUCTIONS,
     output_type=CrawlExtractionOutput,
     tools=[crawl_website]
@@ -61,14 +61,14 @@ content_seo_agent = Agent(
 
 performance_seo_agent = Agent(
     name="performance_seo_agent",
-    model=nararouter,
+    model=general_compute,
     instructions=PERFORMANCE_AGENT_INSTRUCTIONS,
     output_type=PerformanceAnalysis
 )
 
 strategic_seo_agent = Agent(
     name="strategic_seo_agent",
-    model=nararouter,
+    model=general_compute,
     instructions=STRATEGIC_AGENT_INSTRUCTIONS,
     output_type=StrategicAssessment
 )
@@ -90,9 +90,8 @@ async def start_audit(audit_id: int, url: str, db: AsyncSession):
             await db.commit()
     
         # 1. Extraction Phase
-        # Note: In a complete implementation, you'd fetch the raw Crawl4AI data first. 
-        # Here we prompt the extractor agent with the starting command.
-        extractor_input = f"Please extract and normalize data for {url}."
+        # We explicitly command the extractor agent to use the tool first.
+        extractor_input = f"CRITICAL: You MUST use the `crawl_website` tool to fetch the raw data for {url} first. After fetching it, normalize the data into structured JSON."
         extractor_res = await Runner.run(Extractor_agent, input=extractor_input)
         structured_data = extractor_res.final_output
         try:

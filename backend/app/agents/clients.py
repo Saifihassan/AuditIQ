@@ -30,3 +30,21 @@ gemini_client = AsyncOpenAI(
     api_key=os.getenv("GEMINI_API_KEY"),
 )
 gemini = OpenAIChatCompletionsModel(model="gemini-2.5-flash", openai_client=gemini_client)
+
+conduit_client = AsyncOpenAI(
+    base_url=os.getenv("CONDUIT_BASE_URL"),
+    api_key=os.getenv("CONDUIT_API_KEY"),
+)
+conduit = OpenAIChatCompletionsModel(model="gpt-5.6", openai_client=conduit_client)
+
+groq_client = AsyncOpenAI(
+    base_url=os.getenv("GROQ_BASE_URL"),
+    api_key=os.getenv("GROQ_API_KEY"),
+)
+groq = OpenAIChatCompletionsModel(model="openai/gpt-oss-120b", openai_client=groq_client)
+
+literouter_client = AsyncOpenAI(
+    base_url=os.getenv("LITEROUTER_BASE_URL"),
+    api_key=os.getenv("LITEROUTER_API_KEY"),
+)
+literouter = OpenAIChatCompletionsModel(model="glm-5.3-flash-", openai_client=literouter_client)
