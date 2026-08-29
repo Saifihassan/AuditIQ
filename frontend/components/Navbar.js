@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 export default function Navbar() {
   const pathname = usePathname();
-  
+
   // For the sake of this prototype, we simulate auth state based on the route.
   // If the user is on the landing page, login, or signup, they are "logged out".
   // Otherwise, they are "logged in" and can see the dashboard links.
@@ -16,7 +16,7 @@ export default function Navbar() {
       <Link href={isLoggedOut ? "/" : "/dashboard"} className="text-primary-emerald text-xl font-medium cursor-pointer">
         AuditIQ
       </Link>
-      
+
       {!isLoggedOut && (
         <ul className="list-none flex gap-10 justify-evenly items-center">
           <Link href="/dashboard" className="hover:text-primary-bright cursor-pointer">DASHBOARD</Link>

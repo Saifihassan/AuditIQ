@@ -67,19 +67,19 @@ export default function Reports() {
             <section className="mt-10 p-5">
                 <div className="w-full h-full grid grid-cols-3 gap-10">
                     <div className="flex flex-col">
-                    <div className="p-6 rounded-2xl bg-surface flex flex-col gap-5 border border-outline ">
-                        <h3 className="text-xl">Executive Summary</h3>
-                        <p className="text-text-secondary">Lorem ipsum, dolor sit amet consectetur adipisicing elit. Praesentium similique illo officia harum, aliquam beatae ex, incidunt facere nostrum reiciendis facilis aspernatur in quisquam? Alias mollitia rem ratione voluptate facere?</p>
-                        <hr />
-                        <div>
-                            <div className="flex flex-col ">    
-                                <span className="text-text-muted text-sm">TOTAL ISSUES</span>
-                                <span>24</span>
+                        <div className="p-6 rounded-2xl bg-surface flex flex-col gap-5 border border-outline ">
+                            <h3 className="text-xl">Executive Summary</h3>
+                            <p className="text-text-secondary">Lorem ipsum, dolor sit amet consectetur adipisicing elit. Praesentium similique illo officia harum, aliquam beatae ex, incidunt facere nostrum reiciendis facilis aspernatur in quisquam? Alias mollitia rem ratione voluptate facere?</p>
+                            <hr />
+                            <div>
+                                <div className="flex flex-col ">
+                                    <span className="text-text-muted text-sm">TOTAL ISSUES</span>
+                                    <span>24</span>
 
+                                </div>
                             </div>
-                        </div>
 
-                    </div>
+                        </div>
                         <div>severity distribution</div>
 
                     </div>
@@ -89,10 +89,10 @@ export default function Reports() {
                             <h1 className="text-3xl font-semibold text-white">Prioritized Recommendations</h1>
                             <div className="flex items-center gap-4 text-text-muted">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 cursor-pointer hover:text-white transition-colors">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-.75L17.25 9m0 0L21 12.75M17.25 9v12" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-.75L17.25 9m0 0L21 12.75M17.25 9v12" />
                                 </svg>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 cursor-pointer hover:text-white transition-colors">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0l-3.75-3.75M17.25 21L21 17.25" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0l-3.75-3.75M17.25 21L21 17.25" />
                                 </svg>
                             </div>
                         </div>
@@ -107,17 +107,17 @@ export default function Reports() {
                                         </div>
                                         <h2 className="text-xl font-medium mb-3 text-white">{rec.title}</h2>
                                         <p className="text-text-secondary text-sm mb-6 leading-relaxed max-w-3xl">{rec.description}</p>
-                                        
+
                                         <div className="flex items-center gap-6 text-text-muted text-sm font-medium">
                                             <div className="flex items-center gap-2">
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                 </svg>
                                                 <span>Est. {rec.time}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
                                                 </svg>
                                                 <span>{rec.score} Score</span>
                                             </div>

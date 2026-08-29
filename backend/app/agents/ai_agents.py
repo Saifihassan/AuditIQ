@@ -1,9 +1,10 @@
 # pyrefly: ignore [missing-import]
+from app.agents.clients import bluesmind_client
 from sqlalchemy.ext.asyncio import AsyncSession
 from .clients import bluesmind,general_compute,nararouter,gemini,groq,literouter
-from .prompts import EXTRACTOR_AGENT_INSTRUCTIONS, TECHNICAL_SEO_AGENT_INSTRUCTIONS, CONTENT_SEO_AGENT_INSTRUCTIONS, PERFORMANCE_AGENT_INSTRUCTIONS, STRATEGIC_AGENT_INSTRUCTIONS, REPORT_GENERATOR_AGENT_INSTRUCTIONS
-from .schemas import CrawlExtractionOutput, TechnicalSEOAnalysis, ContentSEOAnalysis, PerformanceAnalysis, StrategicAssessment, FinalSEOReport
-from agents import Agent, Runner, function_tool
+from .prompts import TECHNICAL_SEO_AGENT_INSTRUCTIONS, CONTENT_SEO_AGENT_INSTRUCTIONS, PERFORMANCE_AGENT_INSTRUCTIONS, STRATEGIC_AGENT_INSTRUCTIONS, REPORT_GENERATOR_AGENT_INSTRUCTIONS
+from .schemas import TechnicalSEOAnalysis, ContentSEOAnalysis, PerformanceAnalysis, StrategicAssessment, FinalSEOReport
+from agents import Agent, Runner
 import asyncio
 import os
 import httpx
@@ -11,7 +12,7 @@ from app.core.database import get_db
 from fastapi import Depends
 from app.core.models import Audit, AuditStatus
 
-@function_tool
+
 async def crawl_website(url: str) -> str:
     """Crawls a website and returns the extracted content (HTML, Markdown, metadata) using the hosted Crawl4AI instance."""
     base_url = os.getenv("CRAWL4AI_URL")
@@ -37,24 +38,17 @@ async def crawl_website(url: str) -> str:
             return f"Error crawling {url}: {str(e)}"
 
 
-Extractor_agent=Agent(
-    name="extractor_agent",
-    model=literouter,
-    instructions=EXTRACTOR_AGENT_INSTRUCTIONS,
-    output_type=CrawlExtractionOutput,
-    tools=[crawl_website]
-)
 
 technical_seo_agent = Agent(
     name="technical_seo_agent",
-    model=bluesmind,
+    model=nararouter,
     instructions=TECHNICAL_SEO_AGENT_INSTRUCTIONS,
     output_type=TechnicalSEOAnalysis
 )
 
 content_seo_agent = Agent(
     name="content_seo_agent",
-    model=bluesmind,
+    model=nararouter,
     instructions=CONTENT_SEO_AGENT_INSTRUCTIONS,
     output_type=ContentSEOAnalysis
 )
@@ -90,48 +84,27 @@ async def start_audit(audit_id: int, url: str, db: AsyncSession):
             await db.commit()
     
         # 1. Extraction Phase
-        # We explicitly command the extractor agent to use the tool first.
-        extractor_input = f"CRITICAL: You MUST use the `crawl_website` tool to fetch the raw data for {url} first. After fetching it, normalize the data into structured JSON."
-        extractor_res = await Runner.run(Extractor_agent, input=extractor_input)
-        structured_data = extractor_res.final_output
-        try:
-            print("Structured Data:", structured_data)
-        except UnicodeEncodeError:
-            print("Structured Data extracted successfully! (Console encoding prevented full print)")
+        markdown_data = await crawl_website(url)
         
-        if not structured_data:
-            raise ValueError("Extraction failed to return structured data.")
-            
-        structured_json = structured_data.model_dump_json()
+        if not markdown_data or markdown_data.startswith("Error"):
+            raise ValueError(f"Extraction failed: {markdown_data}")
 
         audit = await db.get(Audit, audit_id)
         if audit:
             audit.status = AuditStatus.ANALYZING
             await db.commit()
 
-        # 2. Parallel Audits (Technical, Content, Performance)
-        tech_task = Runner.run(technical_seo_agent, input=structured_json)
-        content_task = Runner.run(content_seo_agent, input=structured_json)
-        perf_task = Runner.run(performance_seo_agent, input=structured_json)
+        # 2. Parallel Audits (Technical, Content, Performance, Strategic)
+        tech_task = Runner.run(technical_seo_agent, input=markdown_data)
+        content_task = Runner.run(content_seo_agent, input=markdown_data)
+        perf_task = Runner.run(performance_seo_agent, input=markdown_data)
+        strategic_task = Runner.run(strategic_seo_agent, input=markdown_data)
         
-        tech_res, content_res, perf_res = await asyncio.gather(tech_task, content_task, perf_task)
+        tech_res, content_res, perf_res, strategic_res = await asyncio.gather(tech_task, content_task, perf_task, strategic_task)
         
         tech_audit = tech_res.final_output
         content_audit = content_res.final_output
         perf_audit = perf_res.final_output
-        
-        audit = await db.get(Audit, audit_id)
-        if audit:
-            audit.status = AuditStatus.SCORING
-            await db.commit()
-
-        # 3. Strategic Scoring Phase
-        strategic_input = (
-            f"Technical: {tech_audit.model_dump_json() if tech_audit else 'None'}\n"
-            f"Content: {content_audit.model_dump_json() if content_audit else 'None'}\n"
-            f"Performance: {perf_audit.model_dump_json() if perf_audit else 'None'}"
-        )
-        strategic_res = await Runner.run(strategic_seo_agent, input=strategic_input)
         strategic_assessment = strategic_res.final_output
         
         audit = await db.get(Audit, audit_id)

@@ -4,38 +4,7 @@ from typing import Optional, Literal
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-class ExtractedLink(StrictModel):
-    url: str
-    text: str
-    is_internal: bool
 
-class ExtractedImage(StrictModel):
-    src: str
-    alt: Optional[str] = None
-    has_alt: bool
-
-class OpenGraphMeta(StrictModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    image: Optional[str] = None
-    url: Optional[str] = None
-    type: Optional[str] = None
-    site_name: Optional[str] = None
-
-class CrawlExtractionOutput(StrictModel):
-    page_title: Optional[str] = None
-    meta_description: Optional[str] = None
-    canonical_url: Optional[str] = None
-    robots_meta: Optional[str] = None
-    h1_tags: list[str] = Field(default_factory=list)
-    h2_tags: list[str] = Field(default_factory=list)
-    h3_tags: list[str] = Field(default_factory=list)
-    word_count: int
-    internal_links: list[ExtractedLink] = Field(default_factory=list)
-    external_links: list[ExtractedLink] = Field(default_factory=list)
-    images: list[ExtractedImage] = Field(default_factory=list)
-    open_graph: OpenGraphMeta = Field(default_factory=OpenGraphMeta)
-    schema_types: list[str] = Field(default_factory=list)
 
 class TechnicalIssue(StrictModel):
     category: Literal["indexing", "canonical", "metadata", "status", "schema", "url_structure"]

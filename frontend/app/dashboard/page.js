@@ -30,6 +30,12 @@ export default function Dashboard() {
         if (res.ok) {
           const data = await res.json();
           setAudits(data);
+        } else {
+          if (res.status === 401) {
+            localStorage.removeItem("token");
+            router.push("/?session_expired=true");
+            return;
+          }
         }
       } catch (err) {
         console.error("Failed to fetch audits:", err);
@@ -62,8 +68,13 @@ export default function Dashboard() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || "Failed to start audit");
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          router.push("/?session_expired=true");
+          return;
+        }
+        const errData = await res.json();
+        throw new Error(errData.detail || "Failed to start audit");
       }
 
       const data = await res.json();

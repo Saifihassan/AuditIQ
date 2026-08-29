@@ -16,14 +16,14 @@ general_compute_client = AsyncOpenAI(
 )
 
 
-bluesmind=OpenAIChatCompletionsModel(model="gpt-5.2-chat",openai_client=bluesmind_client)
+bluesmind=OpenAIChatCompletionsModel(model="kimi-k2.5",openai_client=bluesmind_client)
 general_compute=OpenAIChatCompletionsModel(model="minimax-m2.7",openai_client=general_compute_client)
 
 nararouter_client = AsyncOpenAI(
     base_url=os.getenv("NARAROUTER_BASE_URL"),
     api_key=os.getenv("NARAROUTER_API_KEY"),
 )
-nararouter=OpenAIChatCompletionsModel(model="mistral-large",openai_client=nararouter_client)
+nararouter=OpenAIChatCompletionsModel(model="deepseek-v4-flash",openai_client=nararouter_client)
 
 gemini_client = AsyncOpenAI(
     base_url=os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),

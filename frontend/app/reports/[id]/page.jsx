@@ -16,7 +16,7 @@ export default function ReportPage({ params }) {
             try {
                 const token = localStorage.getItem("token");
                 if (!token) {
-                    router.push("/login");
+                    router.push("/?session_expired=true");
                     return;
                 }
 
@@ -27,6 +27,11 @@ export default function ReportPage({ params }) {
                 });
 
                 if (!res.ok) {
+                    if (res.status === 401) {
+                        localStorage.removeItem("token");
+                        router.push("/?session_expired=true");
+                        return;
+                    }
                     throw new Error("Failed to fetch report");
                 }
 
@@ -89,9 +94,46 @@ export default function ReportPage({ params }) {
         }
     ];
 
-    const issueCount = (report.technical_audit?.key_findings?.length || 0) + 
-                       (report.content_audit?.key_findings?.length || 0) + 
-                       (report.performance_audit?.key_findings?.length || 0);
+    const issueCount = (report.technical_audit?.key_findings?.length || 0) +
+        (report.content_audit?.key_findings?.length || 0) +
+        (report.performance_audit?.key_findings?.length || 0);
+
+    const handleDownloadPDF = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                router.push("/?session_expired=true");
+                return;
+            }
+            const res = await fetch(`http://localhost:8000/api/audits/${id}/pdf`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                if (res.status === 401) {
+                    localStorage.removeItem("token");
+                    router.push("/?session_expired=true");
+                    return;
+                }
+                throw new Error("Failed to download PDF");
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `audit_report_${id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error(error);
+            alert("Could not download the PDF.");
+        }
+    };
 
     return (
         <section className="h-screen px-4 py-6 w-full overflow-y-auto">
@@ -108,7 +150,7 @@ export default function ReportPage({ params }) {
                 <div className="flex flex-col col-end gap-3 text-right items-center">
                     <span className="text-text-muted">OVERALL HEALTH</span>
                     <p><span className="text-4xl font-semibold text-primary-emerald">{report.overall_score}</span>/100</p>
-                    <button className="bg-primary-emerald text-[#1A1C1E] border border-outline px-6 py-2 rounded-4xl w-full flex items-center justify-center gap-2">
+                    <button onClick={handleDownloadPDF} className="bg-primary-emerald text-[#1A1C1E] border border-outline px-6 py-2 rounded-4xl w-full flex items-center justify-center gap-2 transition-transform active:scale-95 hover:bg-primary-bright">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
@@ -125,7 +167,7 @@ export default function ReportPage({ params }) {
                             <p className="text-text-secondary leading-relaxed">{report.executive_summary}</p>
                             <hr className="border-outline" />
                             <div>
-                                <div className="flex flex-col">    
+                                <div className="flex flex-col">
                                     <span className="text-text-muted text-sm uppercase tracking-wider mb-1">Total Issues Detected</span>
                                     <span className="text-3xl font-semibold text-white">{issueCount}</span>
                                 </div>
@@ -161,7 +203,7 @@ export default function ReportPage({ params }) {
                                 </div>
                             ))}
                         </div>
-                        
+
                         <div className="mt-8 p-6 rounded-2xl bg-surface border border-outline">
                             <h2 className="text-2xl font-medium mb-6 text-white">30-Day Action Plan</h2>
                             <ul className="space-y-5">

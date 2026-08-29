@@ -1,6 +1,58 @@
-import React from "react";
+"use client";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function settings() {
+    const [user, setUser] = useState({ username: "", email: "" });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const router = useRouter();
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                setError("No token found. Please login.");
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const res = await fetch("http://localhost:8000/api/auth/me", {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        localStorage.removeItem("token");
+                        router.push("/?session_expired=true");
+                        return;
+                    }
+                    throw new Error("Failed to fetch user data.");
+                }
+
+                const data = await res.json();
+                setUser({ username: data.username, email: data.email });
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUser();
+    }, []);
+
+    if (loading) {
+        return <div className="p-10 flex justify-center text-text-muted">Loading profile...</div>;
+    }
+
+    if (error) {
+        return <div className="p-10 flex justify-center text-red-500">{error}</div>;
+    }
+
     return (
         <>
 
@@ -10,8 +62,8 @@ export default function settings() {
                 <div className="w-[50vw]">
                     <header>
                         <div>
-                            <h1 className="text-2xl">Profile</h1>
-                            <p className="text-text-secondary">Update your agency details and public branding</p>
+                            <h1 className="text-2xl">User Profile</h1>
+                            <p className="text-text-secondary">Update your personal details and public branding</p>
                         </div>
                     </header>
 
@@ -23,27 +75,21 @@ export default function settings() {
                                 </svg>
                             </div>
                             <div>
-                                <button className="bg-surface px-2 py-3 border rounded-2xl">Upload Logo</button>
-                                <p className="text-text-muted mt-4">Recommended size 256x256px. JPG,PNG,or GIF.</p>
+                                <button className="bg-surface px-2 py-3 border rounded-2xl">Upload Avatar</button>
+                                <p className="text-text-muted mt-4">Recommended size 256x256px. JPG, PNG, or GIF.</p>
                             </div>
                         </div>
 
 
                         <div className="flex gap-10 mt-10">
                             <div className="w-full">
-                                <label htmlFor="agencyname">Agency Name</label><br />
-                                <input type="text" className="border border-outline rounded-xl mt-2 p-3 w-full"></input><br />
+                                <label htmlFor="username">Username</label><br />
+                                <input type="text" id="username" value={user.username} onChange={(e) => setUser({...user, username: e.target.value})} className="border border-outline rounded-xl mt-2 p-3 w-full bg-transparent"></input><br />
                             </div>
                             <div className="w-full">
-                                <label htmlFor="contact">Contact Email</label><br />
-                                <input type="email" className="border border-outline rounded-xl mt-2 p-3 w-full"></input>
+                                <label htmlFor="email">Email</label><br />
+                                <input type="email" id="email" value={user.email} onChange={(e) => setUser({...user, email: e.target.value})} className="border border-outline rounded-xl mt-2 p-3 w-full bg-transparent"></input>
                             </div>
-
-                        </div>
-
-                        <div className="mt-10">
-                            <label htmlFor="website">Website</label><br />
-                            <input type="url" className="border border-outline bg-transparent rounded-xl mt-2 p-3 w-full"></input>
                         </div>
 
                         <div className="mt-10 flex justify-end">

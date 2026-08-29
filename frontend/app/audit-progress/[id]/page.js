@@ -29,7 +29,7 @@ export default function AuditProgress({ params }) {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          router.push("/login");
+          router.push("/?session_expired=true");
           return;
         }
 
@@ -40,6 +40,11 @@ export default function AuditProgress({ params }) {
         });
 
         if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem("token");
+            router.push("/?session_expired=true");
+            return;
+          }
           throw new Error("Failed to fetch audit status");
         }
 
