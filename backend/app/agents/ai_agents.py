@@ -27,28 +27,63 @@ async def crawl_website(url: str) -> str:
         "Content-Type": "application/json"
     }
     
-    payload = {"urls": [url]}
+    payload = {
+        "urls": [url],
+        "crawler_config": {
+            "excluded_tags": [
+                "nav", "footer", "aside", "svg", "iframe",
+                "form", "dialog", "noscript", "script", "style",
+                "header"
+            ],
+            "excluded_selector": ".cookie-banner, .cookie-consent, .advertisement, .ad-banner, .ads, #sidebar, .sidebar, .popup, .modal, .overlay, .social-share, .social-links, .comments, #comments",
+            "exclude_external_links": True
+        }
+    }
     
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         try:
             response = await client.post(endpoint, headers=headers, json=payload)
             response.raise_for_status()
+            data = response.json()
+            if data.get("results") and len(data["results"]) > 0:
+                result = data["results"][0]
+                
+                # 1. Grab head metadata from Crawl4AI's structured output
+                page_metadata = result.get("metadata", {})
+                
+                # 2. Get cleaned markdown of the body
+                md = result.get("markdown")
+                if isinstance(md, dict):
+                    body_text = md.get("fit_markdown") or md.get("raw_markdown") or ""
+                else:
+                    body_text = str(md) if md else ""
+
+                # 3. Pass both metadata AND body to your agent
+                import json
+                return json.dumps({
+                    "title": page_metadata.get("title", ""),
+                    "description": page_metadata.get("description", ""),
+                    "canonical": page_metadata.get("canonical_url", ""),
+                    "status_code": page_metadata.get("status_code", 200),
+                    "content": body_text[:35000] # Safe token limit
+                }, indent=2)
             return response.text
         except Exception as e:
             return f"Error crawling {url}: {str(e)}"
 
 
-
 technical_seo_agent = Agent(
     name="technical_seo_agent",
-    model=nararouter,
+    model=general_compute,
+    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
     instructions=TECHNICAL_SEO_AGENT_INSTRUCTIONS,
     output_type=TechnicalSEOAnalysis
 )
 
 content_seo_agent = Agent(
     name="content_seo_agent",
-    model=nararouter,
+    model=general_compute,
+    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
     instructions=CONTENT_SEO_AGENT_INSTRUCTIONS,
     output_type=ContentSEOAnalysis
 )
@@ -56,6 +91,7 @@ content_seo_agent = Agent(
 performance_seo_agent = Agent(
     name="performance_seo_agent",
     model=general_compute,
+    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
     instructions=PERFORMANCE_AGENT_INSTRUCTIONS,
     output_type=PerformanceAnalysis
 )
@@ -63,13 +99,15 @@ performance_seo_agent = Agent(
 strategic_seo_agent = Agent(
     name="strategic_seo_agent",
     model=general_compute,
+    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
     instructions=STRATEGIC_AGENT_INSTRUCTIONS,
     output_type=StrategicAssessment
 )
 
 report_generator_agent = Agent(
     name="report_generator_agent",
-    model=gemini,
+    model=general_compute,
+    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
     instructions=REPORT_GENERATOR_AGENT_INSTRUCTIONS,
     output_type=FinalSEOReport
 )
@@ -124,6 +162,24 @@ async def start_audit(audit_id: int, url: str, db: AsyncSession):
         report_res = await Runner.run(report_generator_agent, input=report_input)
         final_report = report_res.final_output
         
+        # --- Python Post-Processing Validation ---
+        if final_report:
+            # Protocol lock correction: Ensure Target URL is https://
+            if final_report.target_url.startswith("http://"):
+                final_report.target_url = final_report.target_url.replace("http://", "https://", 1)
+            
+            # Array length enforcement: top 3 priorities exactly 3 items
+            if len(final_report.top_3_priorities) > 3:
+                final_report.top_3_priorities = final_report.top_3_priorities[:3]
+            elif len(final_report.top_3_priorities) < 3:
+                final_report.top_3_priorities.extend(["N/A"] * (3 - len(final_report.top_3_priorities)))
+                
+            # Array length enforcement: thirty_day_action_plan exactly 4 items
+            if len(final_report.thirty_day_action_plan) > 4:
+                final_report.thirty_day_action_plan = final_report.thirty_day_action_plan[:4]
+            elif len(final_report.thirty_day_action_plan) < 4:
+                final_report.thirty_day_action_plan.extend(["Review progress and iterate"] * (4 - len(final_report.thirty_day_action_plan)))
+
         print(f"SEO Pipeline completed for {url}!")
         
         audit = await db.get(Audit, audit_id)

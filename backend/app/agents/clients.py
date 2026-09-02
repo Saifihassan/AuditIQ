@@ -16,14 +16,14 @@ general_compute_client = AsyncOpenAI(
 )
 
 
-bluesmind=OpenAIChatCompletionsModel(model="kimi-k2.5",openai_client=bluesmind_client)
+bluesmind=OpenAIChatCompletionsModel(model="gpt-5.3-codex",openai_client=bluesmind_client)
 general_compute=OpenAIChatCompletionsModel(model="minimax-m2.7",openai_client=general_compute_client)
 
 nararouter_client = AsyncOpenAI(
     base_url=os.getenv("NARAROUTER_BASE_URL"),
     api_key=os.getenv("NARAROUTER_API_KEY"),
 )
-nararouter=OpenAIChatCompletionsModel(model="deepseek-v4-flash",openai_client=nararouter_client)
+nararouter=OpenAIChatCompletionsModel(model="laguna-s-2.1",openai_client=nararouter_client)
 
 gemini_client = AsyncOpenAI(
     base_url=os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),
@@ -41,7 +41,7 @@ groq_client = AsyncOpenAI(
     base_url=os.getenv("GROQ_BASE_URL"),
     api_key=os.getenv("GROQ_API_KEY"),
 )
-groq = OpenAIChatCompletionsModel(model="openai/gpt-oss-120b", openai_client=groq_client)
+groq = OpenAIChatCompletionsModel(model="qwen/qwen3.8-27b", openai_client=groq_client)
 
 literouter_client = AsyncOpenAI(
     base_url=os.getenv("LITEROUTER_BASE_URL"),
