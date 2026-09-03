@@ -113,7 +113,47 @@ report_generator_agent = Agent(
 )
 
 
-async def start_audit(audit_id: int, url: str, db: AsyncSession):
+def create_agents(model):
+    """Create all audit agents dynamically with the given model."""
+    return {
+        "technical": Agent(
+            name="technical_seo_agent",
+            model=model,
+            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            instructions=TECHNICAL_SEO_AGENT_INSTRUCTIONS,
+            output_type=TechnicalSEOAnalysis
+        ),
+        "content": Agent(
+            name="content_seo_agent",
+            model=model,
+            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            instructions=CONTENT_SEO_AGENT_INSTRUCTIONS,
+            output_type=ContentSEOAnalysis
+        ),
+        "performance": Agent(
+            name="performance_seo_agent",
+            model=model,
+            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            instructions=PERFORMANCE_AGENT_INSTRUCTIONS,
+            output_type=PerformanceAnalysis
+        ),
+        "strategic": Agent(
+            name="strategic_seo_agent",
+            model=model,
+            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            instructions=STRATEGIC_AGENT_INSTRUCTIONS,
+            output_type=StrategicAssessment
+        ),
+        "report": Agent(
+            name="report_generator_agent",
+            model=model,
+            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            instructions=REPORT_GENERATOR_AGENT_INSTRUCTIONS,
+            output_type=FinalSEOReport
+        )
+    }
+
+async def start_audit(audit_id: int, url: str, db: AsyncSession, api_key: str = None, provider: str = None, model_name: str = None):
     print(f"Starting SEO pipeline for {url}...")
     try:
         audit = await db.get(Audit, audit_id)
@@ -133,12 +173,23 @@ async def start_audit(audit_id: int, url: str, db: AsyncSession):
             await db.commit()
 
         # 2. Parallel Audits (Technical, Content, Performance, Strategic)
-        tech_task = Runner.run(technical_seo_agent, input=markdown_data)
-        content_task = Runner.run(content_seo_agent, input=markdown_data)
-        perf_task = Runner.run(performance_seo_agent, input=markdown_data)
-        strategic_task = Runner.run(strategic_seo_agent, input=markdown_data)
-        
-        tech_res, content_res, perf_res, strategic_res = await asyncio.gather(tech_task, content_task, perf_task, strategic_task)
+        if api_key and provider and model_name:
+            from app.agents.clients import create_user_model
+            model = create_user_model(api_key, provider, model_name)
+            agents = create_agents(model)
+        else:
+            agents = {
+                "technical": technical_seo_agent,
+                "content": content_seo_agent,
+                "performance": performance_seo_agent,
+                "strategic": strategic_seo_agent,
+                "report": report_generator_agent
+            }
+
+        tech_res = await Runner.run(agents["technical"], input=markdown_data)
+        content_res = await Runner.run(agents["content"], input=markdown_data)
+        perf_res = await Runner.run(agents["performance"], input=markdown_data)
+        strategic_res = await Runner.run(agents["strategic"], input=markdown_data)
         
         tech_audit = tech_res.final_output
         content_audit = content_res.final_output
@@ -159,7 +210,7 @@ async def start_audit(audit_id: int, url: str, db: AsyncSession):
             f"Strategic Assessment: {strategic_assessment.model_dump_json() if strategic_assessment else 'None'}"
         )
         
-        report_res = await Runner.run(report_generator_agent, input=report_input)
+        report_res = await Runner.run(agents["report"], input=report_input)
         final_report = report_res.final_output
         
         # --- Python Post-Processing Validation ---
@@ -200,13 +251,13 @@ async def start_audit(audit_id: int, url: str, db: AsyncSession):
 from app.core.database import AsyncSessionLocal
 import traceback
 
-async def run_audit_background(audit_id: int, url: str):
+async def run_audit_background(audit_id: int, url: str, api_key: str = None, provider: str = None, model_name: str = None):
     """
     Wrapper to run start_audit in the background with its own database session.
     """
     async with AsyncSessionLocal() as db:
         try:
-            await start_audit(audit_id, url, db)
+            await start_audit(audit_id, url, db, api_key=api_key, provider=provider, model_name=model_name)
         except Exception as e:
             print(f"Background audit failed for audit_id {audit_id}: {e}")
             traceback.print_exc()

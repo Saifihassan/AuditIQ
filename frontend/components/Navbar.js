@@ -38,9 +38,9 @@ export default function Navbar() {
             )}
           </>
         ) : (
-          <button className="px-5 py-2.5 hover:bg-primary-bright text-[#1A1C1E] bg-primary-emerald rounded-2xl transition-colors duration-200">
+          <Link href="/dashboard" className="px-5 py-2.5 hover:bg-primary-bright text-[#1A1C1E] bg-primary-emerald rounded-2xl transition-colors duration-200 block text-center font-semibold">
             + New Audit
-          </button>
+          </Link>
         )}
       </div>
     </nav>

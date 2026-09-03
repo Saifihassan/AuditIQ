@@ -45,7 +45,8 @@ class AuditStatus(str, Enum):
 
 class AuditCreate(BaseModel):
     url: HttpUrl
-
+    provider: Optional[str] = None
+    model_name: Optional[str] = None
 
 
 class AuditResponse(BaseModel):

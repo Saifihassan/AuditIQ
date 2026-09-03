@@ -25,8 +25,21 @@ class User(Base):
     )
 
     audits = relationship("Audit", back_populates="user", cascade="all, delete-orphan")
+    api_keys = relationship("UserApiKey", back_populates="user", cascade="all, delete-orphan")
 
 
+
+
+class UserApiKey(Base):
+    __tablename__ = "user_api_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider = Column(String(50), nullable=False)
+    encrypted_key = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="api_keys")
 
 
 class AuditStatus(str, enum.Enum):
@@ -46,6 +59,8 @@ class Audit(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     url = Column(String(2048), nullable=False)
+    provider = Column(String(50), nullable=True)
+    model_name = Column(String(100), nullable=True)
     status = Column(SQLEnum(AuditStatus), default=AuditStatus.PENDING, nullable=False)
     result_data = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)

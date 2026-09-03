@@ -2,6 +2,7 @@ import os
 from openai import AsyncOpenAI
 from agents import OpenAIChatCompletionsModel
 from dotenv import load_dotenv
+from app.agents.providers import PROVIDER_REGISTRY
 
 load_dotenv()
 
@@ -48,3 +49,11 @@ literouter_client = AsyncOpenAI(
     api_key=os.getenv("LITEROUTER_API_KEY"),
 )
 literouter = OpenAIChatCompletionsModel(model="glm-5.3-flash-", openai_client=literouter_client)
+
+def create_user_model(api_key: str, provider: str, model_id: str) -> OpenAIChatCompletionsModel:
+    """Create a model client on-the-fly using the user's own API key."""
+    config = PROVIDER_REGISTRY.get(provider)
+    if not config:
+        raise ValueError(f"Provider {provider} not found in registry.")
+    client = AsyncOpenAI(base_url=config["base_url"], api_key=api_key)
+    return OpenAIChatCompletionsModel(model=model_id, openai_client=client)

@@ -8,8 +8,9 @@ from fastapi import status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas import AuditCreate, AuditResponse
 from app.core.database import get_db
-from app.core.models import Audit, User
+from app.core.models import Audit, User, UserApiKey
 from app.api.routes.auth import get_current_user
+from app.core.encryption import decrypt_key
 from fastapi import APIRouter
 
 router = APIRouter()
@@ -26,14 +27,28 @@ async def create_audit(
 ):
     new_audit = Audit(
         user_id=current_user.id,
-        url=str(req.url)
+        url=str(req.url),
+        provider=req.provider,
+        model_name=req.model_name
     )
     db.add(new_audit)
     await db.commit()
     await db.refresh(new_audit)
     
+    api_key = None
+    if req.provider:
+        key_result = await db.execute(
+            select(UserApiKey)
+            .where(UserApiKey.user_id == current_user.id)
+            .where(UserApiKey.provider == req.provider)
+        )
+        saved_key = key_result.scalar_one_or_none()
+        if not saved_key:
+            raise HTTPException(status_code=400, detail=f"No API key saved for provider '{req.provider}'")
+        api_key = decrypt_key(saved_key.encrypted_key)
+    
     # Run the audit in the background so the frontend doesn't wait
-    background_tasks.add_task(run_audit_background, new_audit.id, str(req.url))
+    background_tasks.add_task(run_audit_background, new_audit.id, str(req.url), api_key, req.provider, req.model_name)
     
     return new_audit
 

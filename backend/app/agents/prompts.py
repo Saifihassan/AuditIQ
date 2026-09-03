@@ -6,6 +6,7 @@ Rules & Thresholds:
 - Meta Descriptions: Must ideally be between 120-160 characters. Flag outside this range.
 - Critical Errors: Missing canonical URLs, non-200 HTTP responses, or missing titles must be flagged as critical/high severity.
 - Protocol Lock: Any canonical recommendations must strictly preserve the target domain's https:// scheme.
+- Status Fields: Any "status" fields MUST strictly be one of: "Good", "Needs Improvement", or "Critical". Do not use variants like "adequate" or "critical_issue_present".
 - Language Guard: Output must be strictly in English. Do not include any foreign Unicode characters.
 - Output your findings strictly as structured JSON adhering to the TechnicalSEOAnalysis schema.
 - CRITICAL FORMATTING: RETURN RAW JSON ONLY. DO NOT WRAP IN MARKDOWN (NO ```json ... ```). START YOUR OUTPUT WITH '{' AND END WITH '}'."""
@@ -18,6 +19,7 @@ Rules & Thresholds:
 - Content Depth: Flag word counts under 300 words as 'thin content' unless the page is purely functional (e.g., login, contact).
 - Accessibility: Scrutinize and flag all images lacking descriptive alt attributes.
 - Entity Grounding: Keyword recommendations must be strictly limited to services and terms explicitly found in the crawled text to prevent hallucinated industry buzzwords.
+- Status Fields: Any "status" fields MUST strictly be one of: "Good", "Needs Improvement", or "Critical". Do not use variants like "adequate" or "critical_issue_present".
 - Language Guard: Output must be strictly in English. Do not include any foreign Unicode characters.
 - Output your evaluation exclusively conforming to the ContentSEOAnalysis schema.
 - CRITICAL FORMATTING: RETURN RAW JSON ONLY. DO NOT WRAP IN MARKDOWN (NO ```json ... ```). START YOUR OUTPUT WITH '{' AND END WITH '}'."""
@@ -28,6 +30,7 @@ PERFORMANCE_AGENT_INSTRUCTIONS = """You are an Elite Web Performance and Core We
 Rules & Thresholds:
 - Script/Style Bloat: Flag high counts of external scripts without async/defer markers or excessive inline styles.
 - Asset Optimization: Highlight images using unoptimized formats (e.g., large PNG/BMP where WebP/AVIF is expected) or missing lazy-loading.
+- Status Fields: Any "status" fields MUST strictly be one of: "Good", "Needs Improvement", or "Critical". Do not use variants like "adequate" or "critical_issue_present".
 - Language Guard: Output must be strictly in English. Do not include any foreign Unicode characters.
 - Output strictly in JSON conforming to the PerformanceAnalysis schema.
 - CRITICAL FORMATTING: RETURN RAW JSON ONLY. DO NOT WRAP IN MARKDOWN (NO ```json ... ```). START YOUR OUTPUT WITH '{' AND END WITH '}'."""
@@ -42,6 +45,7 @@ Rules for Scoring & Prioritization:
 - Deduct points deterministically: Thin content (<300 words) = -10 pts, missing caching headers = -8 pts, render-blocking third-party scripts = -5 pts.
 - Action Plan: Prioritize low-effort, high-impact fixes as "Quick Wins" to show immediate ROI.
 - Array Length Enforcement: You MUST provide exactly 3 items for top_3_priorities.
+- Priority Selection: "top_3_priorities" MUST be directly selected from findings marked Critical or Needs Improvement. Never recommend changing an element that was marked "Good". If an H1 tag is missing, it must always be included in the top 3 priorities.
 - Language Guard: Output must be strictly in English. Do not include any foreign Unicode characters.
 - Return pure JSON conforming to the StrategicAssessment schema.
 - CRITICAL FORMATTING: RETURN RAW JSON ONLY. DO NOT WRAP IN MARKDOWN (NO ```json ... ```). START YOUR OUTPUT WITH '{' AND END WITH '}'."""

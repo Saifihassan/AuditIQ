@@ -43,3 +43,10 @@ app.include_router(
     tags=["Auth"]
 )
 
+from app.api.routes import api_keys
+app.include_router(
+    api_keys.router,
+    prefix="/api/keys",
+    tags=["API Keys"]
+)
+

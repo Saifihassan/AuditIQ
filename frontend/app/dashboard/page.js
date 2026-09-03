@@ -6,6 +6,11 @@ import Link from "next/link";
 
 export default function Dashboard() {
   const [url, setUrl] = useState("");
+  const [provider, setProvider] = useState("");
+  const [modelName, setModelName] = useState("");
+  const [availableProviders, setAvailableProviders] = useState({});
+  const [savedKeys, setSavedKeys] = useState([]);
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [audits, setAudits] = useState([]);
@@ -13,7 +18,7 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    const fetchAudits = async () => {
+    const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
@@ -21,31 +26,93 @@ export default function Dashboard() {
           return;
         }
 
-        const res = await fetch("http://localhost:8000/api/audits/?audit_status=completed", {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
+        // Fetch Audits
+        const resAudits = await fetch("http://localhost:8000/api/audits/?audit_status=completed", {
+          headers: { "Authorization": `Bearer ${token}` }
         });
-
-        if (res.ok) {
-          const data = await res.json();
+        if (resAudits.ok) {
+          const data = await resAudits.json();
           setAudits(data);
-        } else {
-          if (res.status === 401) {
-            localStorage.removeItem("token");
-            router.push("/?session_expired=true");
-            return;
+        } else if (resAudits.status === 401) {
+          localStorage.removeItem("token");
+          router.push("/?session_expired=true");
+          return;
+        }
+
+        // Fetch Provider Registry
+        const resProv = await fetch("http://localhost:8000/api/keys/providers", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (resProv.ok) {
+          const data = await resProv.json();
+          setAvailableProviders(data);
+        }
+
+        // Fetch Saved Keys
+        const resKeys = await fetch("http://localhost:8000/api/keys/", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (resKeys.ok) {
+          const data = await resKeys.json();
+          const keys = data.map(k => k.provider);
+          setSavedKeys(keys);
+          if (keys.length > 0) {
+            setProvider(keys[0]);
           }
         }
       } catch (err) {
-        console.error("Failed to fetch audits:", err);
+        console.error("Failed to fetch data:", err);
       } finally {
         setLoadingAudits(false);
       }
     };
 
-    fetchAudits();
+    fetchData();
   }, []);
+
+  const [dynamicModels, setDynamicModels] = useState([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  // Fetch models dynamically when provider changes
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!provider) {
+        setDynamicModels([]);
+        setModelName("");
+        return;
+      }
+      
+      setLoadingModels(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`http://localhost:8000/api/keys/${provider}/models`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setDynamicModels(data);
+          if (data.length > 0) {
+            setModelName(data[0].id);
+          } else {
+            setModelName("");
+          }
+        } else {
+          console.error("Failed to fetch models for provider", provider);
+          setDynamicModels([]);
+          setModelName("");
+        }
+      } catch (err) {
+        console.error(err);
+        setDynamicModels([]);
+        setModelName("");
+      } finally {
+        setLoadingModels(false);
+      }
+    };
+
+    fetchModels();
+  }, [provider]);
 
   const handleAudit = async (e) => {
     e.preventDefault();
@@ -54,8 +121,12 @@ export default function Dashboard() {
 
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("You must be logged in to run an audit.");
+      if (!token) throw new Error("You must be logged in to run an audit.");
+
+      const payload = { url };
+      if (provider && modelName) {
+        payload.provider = provider;
+        payload.model_name = modelName;
       }
 
       const res = await fetch("http://localhost:8000/api/audits/", {
@@ -64,7 +135,7 @@ export default function Dashboard() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -78,7 +149,6 @@ export default function Dashboard() {
       }
 
       const data = await res.json();
-      
       router.push(`/audit-progress/${data.id}`);
       setUrl("");
     } catch (err) {
@@ -98,22 +168,87 @@ export default function Dashboard() {
           
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
           
-          <form onSubmit={handleAudit} className="flex items-center gap-2 justify-center border border-outline p-2 rounded-2xl bg-surface-card w-full max-w-2xl mt-4 shadow-lg shadow-black/20">
-            <div className="flex items-center pl-4 flex-1">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-text-muted">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-              </svg>
-              <input 
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className="p-3 bg-transparent outline-none text-text-main w-full placeholder:text-text-muted ml-2 text-lg" 
-                placeholder="https://clients-domain.com"
-                required
-              />
+          <form onSubmit={handleAudit} className="flex flex-col gap-4 p-6 rounded-2xl bg-surface-card w-full max-w-2xl mt-4 shadow-lg shadow-black/20 border border-outline">
+            
+            <div className="flex flex-col gap-2">
+                <label className="text-sm text-text-secondary font-medium">Target URL</label>
+                <div className="flex items-center bg-surface border border-outline rounded-xl p-2 focus-within:border-primary-emerald transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-text-muted ml-2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                </svg>
+                <input 
+                    type="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="p-2 bg-transparent outline-none text-text-main w-full placeholder:text-text-muted ml-2 text-md" 
+                    placeholder="https://clients-domain.com"
+                    required
+                />
+                </div>
             </div>
-            <button type="submit" disabled={loading} className="px-8 py-3 bg-primary-emerald hover:bg-primary-bright transition-colors duration-200 text-[#1A1C1E] rounded-xl font-semibold disabled:opacity-50 min-w-[140px]">
-              {loading ? "Analyzing..." : "Analyze"}
+
+            {savedKeys.length > 0 && (
+                <div className="flex gap-4 mt-2">
+                    <div className="flex-1 flex flex-col gap-2">
+                        <label className="text-sm text-text-secondary font-medium flex justify-between">
+                            Provider
+                            <Link href="/settings/api-keys" className="text-xs text-primary-emerald hover:underline">Manage Keys</Link>
+                        </label>
+                        <select 
+                            value={provider} 
+                            onChange={(e) => setProvider(e.target.value)}
+                            className="bg-surface border border-outline rounded-xl p-3 outline-none text-sm text-text-main"
+                        >
+                            <option value="">Default (Global)</option>
+                            {(savedKeys || []).map(key => (
+                                <option key={key} value={key}>
+                                    {availableProviders[key]?.label || key}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {provider && availableProviders[provider] && (
+                        <div className="flex-1 flex flex-col gap-2">
+                            <label className="text-sm text-text-secondary font-medium">Model</label>
+                            {loadingModels ? (
+                                <div className="bg-surface border border-outline rounded-xl p-3 flex items-center justify-center text-sm text-text-muted">
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-primary-emerald" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Fetching live models...
+                                </div>
+                            ) : (
+                                <select 
+                                    value={modelName} 
+                                    onChange={(e) => setModelName(e.target.value)}
+                                    className="bg-surface border border-outline rounded-xl p-3 outline-none text-sm text-text-main"
+                                >
+                                    {(dynamicModels || []).map(m => (
+                                        <option key={m.id} value={m.id}>
+                                            {m.label}
+                                        </option>
+                                    ))}
+                                    {(!dynamicModels || dynamicModels.length === 0) && (
+                                        <option value="" disabled>No models found</option>
+                                    )}
+                                </select>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {savedKeys.length === 0 && (
+                <div className="text-sm text-text-muted bg-surface/50 border border-outline/50 p-3 rounded-xl flex items-center justify-between">
+                    <span>Using default global models.</span>
+                    <Link href="/settings/api-keys" className="text-primary-emerald hover:underline font-medium">Bring Your Own Key</Link>
+                </div>
+            )}
+
+            <button type="submit" disabled={loading} className="mt-4 px-8 py-3 bg-primary-emerald hover:bg-primary-bright transition-colors duration-200 text-[#1A1C1E] rounded-xl font-semibold disabled:opacity-50 w-full">
+              {loading ? "Analyzing..." : "Start Analysis"}
             </button>
           </form>
         </div>
@@ -127,7 +262,7 @@ export default function Dashboard() {
           </div>
         ) : audits.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {audits.map((audit) => (
+            {(audits || []).map((audit) => (
               <Link href={`/reports/${audit.id}`} key={audit.id} className="border border-outline bg-surface hover:bg-surface-card transition-colors duration-200 rounded-2xl p-6 flex flex-col gap-4 group">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary-emerald/20 flex items-center justify-center text-primary-emerald">
