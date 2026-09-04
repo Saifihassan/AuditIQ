@@ -135,6 +135,15 @@ export default function ReportPage({ params }) {
         }
     };
 
+    const websiteDomain = (() => {
+        try {
+            const urlObj = new URL(report.target_url.startsWith("http") ? report.target_url : `https://${report.target_url}`);
+            return urlObj.hostname.replace(/^www\./, "");
+        } catch {
+            return report.target_url;
+        }
+    })();
+
     return (
         <section className="h-screen px-4 py-6 w-full overflow-y-auto">
             <header className="w-full pb-8 flex border-b-2 border-outline justify-between">
@@ -143,8 +152,15 @@ export default function ReportPage({ params }) {
                         <span className="bg-surface-bright px-4 text-text-muted py-1 border border-outline rounded-2xl">Audit Report</span>
                         <span className="text-text-muted"><p>Generated at: {new Date(report.created_at).toLocaleDateString()}</p></span>
                     </div>
-                    <h1 className="text-4xl text-white font-medium">Domain Audit Result</h1>
-                    <p className="text-primary-bright text-lg">{report.target_url}</p>
+                    <h1 className="text-4xl text-white font-medium capitalize">{websiteDomain}</h1>
+                    <a
+                        href={report.target_url.startsWith("http") ? report.target_url : `https://${report.target_url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary-bright text-lg hover:underline flex items-center gap-1 w-fit"
+                    >
+                        {report.target_url}
+                    </a>
                 </div>
 
                 <div className="flex flex-col col-end gap-3 text-right items-center">

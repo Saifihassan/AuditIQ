@@ -26,11 +26,14 @@ async def crawl_website(url: str) -> str:
         "urls": [url],
         "crawler_config": {
             "excluded_tags": [
-                "nav", "footer", "aside", "svg", "iframe",
-                "form", "dialog", "noscript", "script", "style",
-                "header"
+                # Only exclude tags with zero SEO value
+                "script", "style", "svg", "iframe",
+                "noscript", "dialog"
+                # NOTE: nav, header, aside, footer are kept because they
+                # contain internal link structure, anchor text, and breadcrumbs
+                # which are all critical signals for SEO analysis.
             ],
-            "excluded_selector": ".cookie-banner, .cookie-consent, .advertisement, .ad-banner, .ads, #sidebar, .sidebar, .popup, .modal, .overlay, .social-share, .social-links, .comments, #comments",
+            "excluded_selector": ".cookie-banner, .cookie-consent, .advertisement, .ad-banner, .ads, .popup, .modal, .overlay",
             "exclude_external_links": True
         }
     }
@@ -54,7 +57,7 @@ async def crawl_website(url: str) -> str:
             return f"Error crawling {url}: {str(e)}"
 
 async def main():
-    url = "https://ngwebtechnologies.com/"
+    url = "https://www.roiminds.com/"
     print(f"Crawling {url}...")
     content = await crawl_website(url)
     

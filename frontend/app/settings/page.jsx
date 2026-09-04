@@ -8,6 +8,11 @@ export default function settings() {
     const [error, setError] = useState("");
     const router = useRouter();
 
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        router.push("/");
+    };
+
     useEffect(() => {
         const fetchUser = async () => {
             const token = localStorage.getItem("token");
@@ -92,7 +97,10 @@ export default function settings() {
                             </div>
                         </div>
 
-                        <div className="mt-10 flex justify-end">
+                        <div className="mt-10 flex justify-between items-center">
+                            <button onClick={handleLogout} className="px-8 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors duration-200 rounded-2xl font-semibold">
+                                Logout
+                            </button>
                             <button className="px-8 py-3 bg-primary-emerald hover:bg-primary-bright transition-colors duration-200 text-[#1A1C1E] rounded-2xl font-semibold">
                                 Save Changes
                             </button>

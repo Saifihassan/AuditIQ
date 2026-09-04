@@ -1,7 +1,8 @@
 from typing import Optional, List
+from datetime import datetime, timedelta
 from fpdf import FPDF
 from fastapi.responses import Response
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.agents.ai_agents import start_audit
 from fastapi import HTTPException
 from fastapi import status, Depends
@@ -25,6 +26,24 @@ async def create_audit(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Enforce rate limit for default/global models (3 requests / 24 hours per user)
+    if not req.provider:
+        twenty_four_hours_ago = datetime.utcnow() - timedelta(days=1)
+        stmt = (
+            select(func.count(Audit.id))
+            .where(Audit.user_id == current_user.id)
+            .where(Audit.provider == None)
+            .where(Audit.created_at >= twenty_four_hours_ago)
+        )
+        res = await db.execute(stmt)
+        count = res.scalar() or 0
+        
+        if count >= 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Daily free limit reached (3/3 global model audits per 24 hours). Add your own API key in Settings to run unlimited audits."
+            )
+
     new_audit = Audit(
         user_id=current_user.id,
         url=str(req.url),

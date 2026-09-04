@@ -57,8 +57,19 @@ async def get_provider_models(
             response = await client.get(url, headers=headers)
             response.raise_for_status()
             data = response.json()
-            models = [{"id": m.get("id"), "label": m.get("id")} for m in data.get("data", [])]
-            # Optionally filter out models if needed, but we'll return them all
+            raw_models = [{"id": m.get("id"), "label": m.get("id")} for m in data.get("data", [])]
+            
+            # Filter out models that are not useful for text generation
+            excluded_keywords = [
+                "whisper", "tts", "audio", "voice", "embed", "embedding", 
+                "dall-e", "vision", "bge", "stable-diffusion", "image", "speech"
+            ]
+            
+            models = [
+                m for m in raw_models 
+                if not any(keyword in m["id"].lower() for keyword in excluded_keywords)
+            ]
+            
             return models
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=f"Provider API error: {e.response.text}")

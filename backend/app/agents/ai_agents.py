@@ -31,11 +31,14 @@ async def crawl_website(url: str) -> str:
         "urls": [url],
         "crawler_config": {
             "excluded_tags": [
-                "nav", "footer", "aside", "svg", "iframe",
-                "form", "dialog", "noscript", "script", "style",
-                "header"
+                # Only exclude tags with zero SEO value
+                "script", "style", "svg", "iframe",
+                "noscript", "dialog"
+                # NOTE: nav, header, aside, footer are kept because they
+                # contain internal link structure, anchor text, and breadcrumbs
+                # which are all critical signals for SEO analysis.
             ],
-            "excluded_selector": ".cookie-banner, .cookie-consent, .advertisement, .ad-banner, .ads, #sidebar, .sidebar, .popup, .modal, .overlay, .social-share, .social-links, .comments, #comments",
+            "excluded_selector": ".cookie-banner, .cookie-consent, .advertisement, .ad-banner, .ads, .popup, .modal, .overlay",
             "exclude_external_links": True
         }
     }
@@ -75,7 +78,7 @@ async def crawl_website(url: str) -> str:
 technical_seo_agent = Agent(
     name="technical_seo_agent",
     model=general_compute,
-    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+    model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=TECHNICAL_SEO_AGENT_INSTRUCTIONS,
     output_type=TechnicalSEOAnalysis
 )
@@ -83,7 +86,7 @@ technical_seo_agent = Agent(
 content_seo_agent = Agent(
     name="content_seo_agent",
     model=general_compute,
-    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+    model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=CONTENT_SEO_AGENT_INSTRUCTIONS,
     output_type=ContentSEOAnalysis
 )
@@ -91,7 +94,7 @@ content_seo_agent = Agent(
 performance_seo_agent = Agent(
     name="performance_seo_agent",
     model=general_compute,
-    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+    model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=PERFORMANCE_AGENT_INSTRUCTIONS,
     output_type=PerformanceAnalysis
 )
@@ -99,7 +102,7 @@ performance_seo_agent = Agent(
 strategic_seo_agent = Agent(
     name="strategic_seo_agent",
     model=general_compute,
-    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+    model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=STRATEGIC_AGENT_INSTRUCTIONS,
     output_type=StrategicAssessment
 )
@@ -107,7 +110,7 @@ strategic_seo_agent = Agent(
 report_generator_agent = Agent(
     name="report_generator_agent",
     model=general_compute,
-    model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+    model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=REPORT_GENERATOR_AGENT_INSTRUCTIONS,
     output_type=FinalSEOReport
 )
@@ -119,39 +122,40 @@ def create_agents(model):
         "technical": Agent(
             name="technical_seo_agent",
             model=model,
-            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            model_settings={"temperature": 0.1, "top_p": 0.8},
             instructions=TECHNICAL_SEO_AGENT_INSTRUCTIONS,
             output_type=TechnicalSEOAnalysis
         ),
         "content": Agent(
             name="content_seo_agent",
             model=model,
-            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            model_settings={"temperature": 0.1, "top_p": 0.8},
             instructions=CONTENT_SEO_AGENT_INSTRUCTIONS,
             output_type=ContentSEOAnalysis
         ),
         "performance": Agent(
             name="performance_seo_agent",
             model=model,
-            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            model_settings={"temperature": 0.1, "top_p": 0.8},
             instructions=PERFORMANCE_AGENT_INSTRUCTIONS,
             output_type=PerformanceAnalysis
         ),
         "strategic": Agent(
             name="strategic_seo_agent",
             model=model,
-            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            model_settings={"temperature": 0.1, "top_p": 0.8},
             instructions=STRATEGIC_AGENT_INSTRUCTIONS,
             output_type=StrategicAssessment
         ),
         "report": Agent(
             name="report_generator_agent",
             model=model,
-            model_settings={"temperature": 0.1, "top_p": 0.8, "max_tokens": 3000},
+            model_settings={"temperature": 0.1, "top_p": 0.8},
             instructions=REPORT_GENERATOR_AGENT_INSTRUCTIONS,
             output_type=FinalSEOReport
         )
     }
+
 
 async def start_audit(audit_id: int, url: str, db: AsyncSession, api_key: str = None, provider: str = None, model_name: str = None):
     print(f"Starting SEO pipeline for {url}...")
