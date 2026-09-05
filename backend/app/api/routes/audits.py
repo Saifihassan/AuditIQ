@@ -9,7 +9,7 @@ from fastapi import status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas import AuditCreate, AuditResponse
 from app.core.database import get_db
-from app.core.models import Audit, User, UserApiKey
+from app.core.models import Audit, User, UserApiKey, AuditStatus
 from app.api.routes.auth import get_current_user
 from app.core.encryption import decrypt_key
 from fastapi import APIRouter
@@ -26,13 +26,14 @@ async def create_audit(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Enforce rate limit for default/global models (3 requests / 24 hours per user)
+    # Enforce rate limit for default/global models (3 successful audits / 24 hours per user)
     if not req.provider:
         twenty_four_hours_ago = datetime.utcnow() - timedelta(days=1)
         stmt = (
             select(func.count(Audit.id))
             .where(Audit.user_id == current_user.id)
             .where(Audit.provider == None)
+            .where(Audit.status == AuditStatus.COMPLETED)
             .where(Audit.created_at >= twenty_four_hours_ago)
         )
         res = await db.execute(stmt)
@@ -41,7 +42,7 @@ async def create_audit(
         if count >= 3:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Daily free limit reached (3/3 global model audits per 24 hours). Add your own API key in Settings to run unlimited audits."
+                detail="Daily free limit reached (3/3 successful global model audits per 24 hours). Add your own API key in Settings to run unlimited audits."
             )
 
     new_audit = Audit(
@@ -179,4 +180,4 @@ async def download_audit_pdf(
         content=bytes(pdf_content), 
         media_type="application/pdf", 
         headers={"Content-Disposition": f"attachment; filename=audit_{audit_id}.pdf"}
-    )
+    )

@@ -13,71 +13,157 @@ from fastapi import Depends
 from app.core.models import Audit, AuditStatus
 
 
-async def crawl_website(url: str) -> str:
-    """Crawls a website and returns the extracted content (HTML, Markdown, metadata) using the hosted Crawl4AI instance."""
-    base_url = os.getenv("CRAWL4AI_URL")
-    api_token = os.getenv("CRAWL4AI_API_TOKEN")
-    
-    if not base_url or not api_token:
-        return "Error: CRAWL4AI_URL or CRAWL4AI_API_TOKEN is not set in the environment."
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+import sys
+import re
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
+
+def extract_seo_facts(html_content: str, target_url: str) -> dict:
+    """Extracts ground-truth technical, on-page, and accessibility SEO facts from raw HTML using BeautifulSoup."""
+    soup = BeautifulSoup(html_content or "", "html.parser")
+
+    # 1. Canonical URL
+    canonical_tag = soup.find("link", rel=lambda x: x and "canonical" in (x if isinstance(x, str) else " ".join(x)).lower())
+    canonical_href = canonical_tag.get("href", "").strip() if canonical_tag else None
+
+    # 2. Title Tag
+    title_tag = soup.find("title")
+    title_text = title_tag.get_text(strip=True) if title_tag else ""
+
+    # 3. Meta Description
+    meta_desc_tag = soup.find("meta", attrs={"name": re.compile(r"^description$", re.I)})
+    meta_desc_text = meta_desc_tag.get("content", "").strip() if meta_desc_tag else ""
+
+    # 4. Heading Hierarchy
+    h1_elements = soup.find_all("h1")
+    h1_list = [h.get_text(" ", strip=True) for h in h1_elements]
+
+    # 5. Image Alt Accessibility
+    images = soup.find_all("img")
+    missing_alts = []
+    unoptimized_images = 0
+
+    for img in images:
+        src = img.get("src") or img.get("data-src") or "unknown"
+        alt = img.get("alt")
+        # Flag missing alt
+        if alt is None:
+            missing_alts.append(src[:100])
         
-    endpoint = f"{base_url.rstrip('/')}/crawl"
-    headers = {
-        "Authorization": f"Bearer {api_token}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "urls": [url],
-        "crawler_config": {
-            "excluded_tags": [
-                # Only exclude tags with zero SEO value
-                "script", "style", "svg", "iframe",
-                "noscript", "dialog"
-                # NOTE: nav, header, aside, footer are kept because they
-                # contain internal link structure, anchor text, and breadcrumbs
-                # which are all critical signals for SEO analysis.
-            ],
-            "excluded_selector": ".cookie-banner, .cookie-consent, .advertisement, .ad-banner, .ads, .popup, .modal, .overlay",
-            "exclude_external_links": True
+        # Check for lazy loading
+        if img.get("loading") != "lazy":
+            unoptimized_images += 1
+
+    # 6. Structured Data (JSON-LD)
+    json_ld_scripts = soup.find_all("script", type="application/ld+json")
+    has_structured_data = len(json_ld_scripts) > 0
+
+    # 7. Clean Visible Word Count
+    # Decompose non-content nodes before counting
+    for noise in soup(["script", "style", "svg", "noscript", "iframe", "canvas"]):
+        noise.decompose()
+
+    visible_text = soup.get_text(separator=" ", strip=True)
+    words = re.findall(r"\b\w+\b", visible_text)
+    word_count = len(words)
+
+    # Meta Robots & Indexability
+    robots_tag = soup.find("meta", attrs={"name": re.compile(r"^robots$", re.I)})
+    robots_content = robots_tag.get("content", "").strip() if robots_tag else ""
+    is_indexable = "noindex" not in robots_content.lower()
+
+    return {
+        "target_url": target_url,
+        "technical": {
+            "is_indexable": is_indexable,
+            "robots_meta": robots_content,
+            "canonical_url": canonical_href,
+            "has_canonical": bool(canonical_href),
+            "title": {
+                "text": title_text,
+                "length": len(title_text),
+                "status": "optimal" if 50 <= len(title_text) <= 60 else ("too_short" if len(title_text) < 50 else "too_long")
+            },
+            "meta_description": {
+                "text": meta_desc_text,
+                "length": len(meta_desc_text),
+                "status": "optimal" if 120 <= len(meta_desc_text) <= 160 else ("too_short" if len(meta_desc_text) < 120 else "too_long")
+            },
+            "has_structured_data": has_structured_data
+        },
+        "content": {
+            "word_count": word_count,
+            "h1_count": len(h1_list),
+            "h1_tags": h1_list
+        },
+        "performance_and_accessibility": {
+            "total_images_found": len(images),
+            "images_missing_alt_count": len(missing_alts),
+            "sample_images_missing_alt": missing_alts[:5],
+            "images_lacking_lazy_loading": unoptimized_images
         }
     }
+
+async def _crawl_website_async(url: str) -> str:
+    """Internal async function to run Crawl4AI."""
+    config = CrawlerRunConfig(
+        excluded_tags=[
+            # High-Token & Non-Content Elements
+            "svg", "path", "g", "defs", "symbol",
+            "style",
+            "noscript", "iframe", "canvas",
+            "video", "audio", "source", "track",
+            "template", "slot", "embed", "object",
+            # Forms & Interactive UI
+            "form", "input", "textarea", "select", "option", "optgroup",
+            "button", "label", "fieldset", "legend", "dialog",
+            # Media & Miscellaneous Utilities
+            "map", "area", "portal"
+        ],
+        excluded_selector='script:not([type="application/ld+json"]), .cookie-banner, .cookie-consent, .advertisement, .ad-banner, .ads, .popup, .modal, .overlay',
+        exclude_external_links=True
+    )
     
-    async with httpx.AsyncClient(timeout=90.0) as client:
-        try:
-            response = await client.post(endpoint, headers=headers, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            if data.get("results") and len(data["results"]) > 0:
-                result = data["results"][0]
+    try:
+        async with AsyncWebCrawler() as crawler:
+            result = await crawler.arun(url=url, config=config)
+            if result.success:
+                html_content = getattr(result, "html", "") or getattr(result, "cleaned_html", "") or ""
+                seo_facts = extract_seo_facts(html_content, url)
                 
-                # 1. Grab head metadata from Crawl4AI's structured output
-                page_metadata = result.get("metadata", {})
-                
-                # 2. Get cleaned markdown of the body
-                md = result.get("markdown")
+                # Include body preview for extra context
+                md = result.markdown
                 if isinstance(md, dict):
                     body_text = md.get("fit_markdown") or md.get("raw_markdown") or ""
+                elif hasattr(md, "raw_markdown"):
+                    body_text = md.raw_markdown
                 else:
                     body_text = str(md) if md else ""
 
-                # 3. Pass both metadata AND body to your agent
+                seo_facts["raw_content_preview"] = body_text[:20000]
+
                 import json
-                return json.dumps({
-                    "title": page_metadata.get("title", ""),
-                    "description": page_metadata.get("description", ""),
-                    "canonical": page_metadata.get("canonical_url", ""),
-                    "status_code": page_metadata.get("status_code", 200),
-                    "content": body_text[:35000] # Safe token limit
-                }, indent=2)
-            return response.text
-        except Exception as e:
-            return f"Error crawling {url}: {str(e)}"
+                return json.dumps(seo_facts, indent=2)
+            else:
+                return f"Error crawling {url}: {result.error_message}"
+    except Exception as e:
+        return f"Error crawling {url}: {str(e)}"
+
+def _sync_crawl_worker(url: str) -> str:
+    """Worker function running in a background thread with WindowsProactorEventLoopPolicy."""
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    return asyncio.run(_crawl_website_async(url))
+
+async def crawl_website(url: str) -> str:
+    """Crawls a website in a dedicated thread to ensure ProactorEventLoop on Windows under Uvicorn."""
+    return await asyncio.to_thread(_sync_crawl_worker, url)
 
 
 technical_seo_agent = Agent(
     name="technical_seo_agent",
-    model=general_compute,
+    model=bluesmind,
     model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=TECHNICAL_SEO_AGENT_INSTRUCTIONS,
     output_type=TechnicalSEOAnalysis
@@ -85,7 +171,7 @@ technical_seo_agent = Agent(
 
 content_seo_agent = Agent(
     name="content_seo_agent",
-    model=general_compute,
+    model=bluesmind,
     model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=CONTENT_SEO_AGENT_INSTRUCTIONS,
     output_type=ContentSEOAnalysis
@@ -93,7 +179,7 @@ content_seo_agent = Agent(
 
 performance_seo_agent = Agent(
     name="performance_seo_agent",
-    model=general_compute,
+    model=bluesmind,
     model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=PERFORMANCE_AGENT_INSTRUCTIONS,
     output_type=PerformanceAnalysis
@@ -101,7 +187,7 @@ performance_seo_agent = Agent(
 
 strategic_seo_agent = Agent(
     name="strategic_seo_agent",
-    model=general_compute,
+    model=bluesmind,
     model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=STRATEGIC_AGENT_INSTRUCTIONS,
     output_type=StrategicAssessment
@@ -109,7 +195,7 @@ strategic_seo_agent = Agent(
 
 report_generator_agent = Agent(
     name="report_generator_agent",
-    model=general_compute,
+    model=bluesmind,
     model_settings={"temperature": 0.1, "top_p": 0.8},
     instructions=REPORT_GENERATOR_AGENT_INSTRUCTIONS,
     output_type=FinalSEOReport

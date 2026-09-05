@@ -9,52 +9,42 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+
 async def crawl_website(url: str) -> str:
-    base_url = os.getenv("CRAWL4AI_URL")
-    api_token = os.getenv("CRAWL4AI_API_TOKEN")
+    config = CrawlerRunConfig(
+        excluded_tags=[
+            # High-Token & Non-Content Elements
+            "svg", "path", "g", "defs", "symbol",
+            "style",
+            "noscript", "iframe", "canvas",
+            "video", "audio", "source", "track",
+            "template", "slot", "embed", "object",
+            # Forms & Interactive UI
+            "form", "input", "textarea", "select", "option", "optgroup",
+            "button", "label", "fieldset", "legend", "dialog",
+            # Media & Miscellaneous Utilities
+            "map", "area", "portal"
+        ],
+        excluded_selector='script:not([type="application/ld+json"]), .cookie-banner, .cookie-consent, .advertisement, .ad-banner, .ads, .popup, .modal, .overlay',
+        exclude_external_links=True
+    )
     
-    if not base_url or not api_token:
-        return "Error: CRAWL4AI_URL or CRAWL4AI_API_TOKEN is not set in the environment."
-        
-    endpoint = f"{base_url.rstrip('/')}/crawl"
-    headers = {
-        "Authorization": f"Bearer {api_token}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "urls": [url],
-        "crawler_config": {
-            "excluded_tags": [
-                # Only exclude tags with zero SEO value
-                "script", "style", "svg", "iframe",
-                "noscript", "dialog"
-                # NOTE: nav, header, aside, footer are kept because they
-                # contain internal link structure, anchor text, and breadcrumbs
-                # which are all critical signals for SEO analysis.
-            ],
-            "excluded_selector": ".cookie-banner, .cookie-consent, .advertisement, .ad-banner, .ads, .popup, .modal, .overlay",
-            "exclude_external_links": True
-        }
-    }
-    
-    async with httpx.AsyncClient(timeout=90.0) as client:
-        try:
-            response = await client.post(endpoint, headers=headers, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            if data.get("results") and len(data["results"]) > 0:
-                result = data["results"][0]
-                md = result.get("markdown")
+    try:
+        async with AsyncWebCrawler() as crawler:
+            result = await crawler.arun(url=url, config=config)
+            if result.success:
+                md = result.markdown
                 if isinstance(md, dict):
-                    md = md.get("raw_markdown") or md.get("fit_markdown") or ""
-                elif not isinstance(md, str):
-                    md = str(md) if md else ""
-                
-                return md or result.get("html") or response.text
-            return response.text
-        except Exception as e:
-            return f"Error crawling {url}: {str(e)}"
+                    return md.get("fit_markdown") or md.get("raw_markdown") or ""
+                elif hasattr(md, "raw_markdown"):
+                    return md.raw_markdown
+                else:
+                    return str(md) if md else ""
+            else:
+                return f"Error crawling {url}: {result.error_message}"
+    except Exception as e:
+        return f"Error crawling {url}: {str(e)}"
 
 async def main():
     url = "https://www.roiminds.com/"
@@ -73,6 +63,9 @@ async def main():
         print(f"Token count (cl100k_base): {tokens}")
     else:
         print(f"Approximate token count: {len(content) // 4}")
+    
+    print("\nFirst 300 characters preview:")
+    print(content[:300].encode('ascii', errors='ignore').decode('ascii'))
 
 if __name__ == "__main__":
     asyncio.run(main())
